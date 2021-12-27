@@ -26,7 +26,7 @@ router.post( '/', [
 router.post( '/new', [
 
     check( 'nombre', 'El nombre es obligatorio' ).notEmpty(),
-    check( 'email', 'El email es obligatorio' ).isEmail(),
+    check( 'email', 'El email no es valido' ).isEmail(),
     check( 'password', 'El password es obligatorio' ).isLength( { min: 6 } ),
 
     check( 'email' ).custom( existeEmail ),
@@ -36,7 +36,7 @@ router.post( '/new', [
 ], newUser );
 
 // Renovar token
-router.post( '/renew', validarJWT, renew );
+router.get( '/renew', validarJWT, renew );
 
 
 module.exports = router;

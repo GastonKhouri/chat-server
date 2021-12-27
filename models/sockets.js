@@ -1,3 +1,11 @@
+const {
+    usuarioConectado,
+    usuarioDesconectado,
+    getUsuarios,
+    grabarMensaje
+} = require( '../controllers/sockets' );
+
+const { comprobarJWT } = require( '../helpers/generate-jwt' );
 
 class Sockets {
 
@@ -12,22 +20,45 @@ class Sockets {
     socketEvents() {
 
         // On connection
-        this.io.on( 'connection', ( socket ) => {
+        this.io.on( 'connection', async ( socket ) => {
 
-            // TODO: Validar JWT
+            // Validar JWT
             // Si el token no es valido desconectar
+            const token = socket.handshake.query[ 'x-token' ];
 
-            // TODO: Saber que usuario esta activo mediante UID
+            const [ valido, uid ] = comprobarJWT( token );
 
-            // TODO: Emitir todos los usuarios conectados
+            if ( !valido ) {
+                console.log( 'Socket no identificado' );
+                return socket.disconnect();
+            }
 
-            // TODO: Socket join, uid
+            // Saber que usuario esta activo mediante UID
+            await usuarioConectado( uid );
 
-            // TODO: Escuchar cuando el cliente manda un mensaje
-            // Mensaje-personal
+            // Emitir todos los usuarios conectados
+            this.io.emit( 'lista-usuarios', await getUsuarios() );
 
-            // TODO: Disconnect
+            // Unir al usuario a una sala de socket.io
+            socket.join( uid );
+
+            // Escuchar cuando el cliente manda un mensaje
+            socket.on( 'mensaje-personal', async ( payload ) => {
+
+                const mensaje = await grabarMensaje( payload );
+                this.io.to( payload.para ).emit( 'mensaje-personal', mensaje );
+                this.io.to( payload.de ).emit( 'mensaje-personal', mensaje );
+
+            } );
+
+            // Disconnect
             // Marcar en la db que el usuario se desconecto
+            socket.on( 'disconnect', async () => {
+
+                await usuarioDesconectado( uid );
+                this.io.emit( 'lista-usuarios', await getUsuarios() );
+
+            } );
 
         } );
 
